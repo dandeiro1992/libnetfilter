@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <linux/if_packet.h>
 #include <net/ethernet.h>
+#include <vector>
 //extern "C"
 //{
 //#include <libnetfilter_queue/libnetfilter_queue.h>
@@ -133,6 +134,7 @@
 
 int main()
 {
+    std::vector<unsigned char *> vector_of_packets;
     int saddr_size , data_size, daddr_size, bytes_sent;
     struct sockaddr_ll saddr, daddr;
     unsigned char *buffer=(unsigned char *)malloc(65535);
@@ -203,12 +205,24 @@ int main()
                 new_buffer[29]=0x02;
                 new_buffer[33]=0x01;
                 bytes_sent=write(sock,new_buffer,data_size);
-                //printf("Sent %d bytes\n",bytes_sent);
-                 if (bytes_sent < 0) {
-                    perror("sendto");
-                    exit(1);
-                 }
-            }
+                if(vector_of_packets.size()>30)
+                {
+                    for (auto it=vector_of_packets.begin();it!=vector_of_packets.end();it++)
+                        bytes_sent=write(sock,*it,strlen((char*)*it));
+                    for (int i=0;i<vector_of_packets.size();i++)
+                        vector_of_packets.pop_back();
+
+                }
+                else
+                {
+                    vector_of_packets.emplace_back(new_buffer);
+                    //printf("Sent %d bytes\n",bytes_sent);
+                     if (bytes_sent < 0) {
+                        perror("sendto");
+                        exit(1);
+                     }
+                }
+                }
         }
     }
     close(sock_raw);
