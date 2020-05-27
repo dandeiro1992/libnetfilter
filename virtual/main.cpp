@@ -97,46 +97,80 @@ void thread_function( std::map<std::string, int> sockets, int main_socket, std::
     while (true)
     {
         data_size = recvfrom(main_socket , &buffer , BUFFER_SIZE , 0 ,(struct sockaddr *) &saddr , (socklen_t*)&saddr_size);
-        if(1)//d1(rd1)>PERCENTAGE)
+        if(buffer[29]==0x9d)//d1(rd1)>PERCENTAGE)
         {
-            if(addresses.count(buffer[FRAME_BYTE-4])>0)
+//            if(addresses.count(buffer[FRAME_BYTE-4])>0)
+//            {
+//                // MAC
+//                buffer[0]=0xe0;
+//                buffer[1]=0x1a;
+//                buffer[2]=0xea;
+//                buffer[3]=0x37;
+//                buffer[4]=0x3b;
+//                buffer[5]=0x6c;
+//                buffer[6]=0xe0;
+//                buffer[7]=0x1a;
+//                buffer[8]=0xea;
+//                buffer[9]=0x37;
+//                buffer[10]=0x3b;
+//                buffer[11]=0x62;
+//                // IP
+//                buffer[29]=0x02;
+//                buffer[33]=0x01;
+
+//                write(sockets.find(addresses.find(buffer[FRAME_BYTE])->second)->second,&buffer,data_size);
+//                //write(sockets.find("enp1s0f1")->second,&buffer,data_size);
+//                //packets_map[(addresses.find(buffer[FRAME_BYTE])->second)].push_back(buffer);
+//                //deal_with_old_frames(packets_map,sockets,NUMBER_OF_OLD_FRAMES);
+//            }
+            buffer[6]=0xc8;
+            buffer[7]=0xd9;
+            buffer[8]=0xd2;
+            buffer[9]=0x18;
+            buffer[10]=0xdb;
+            buffer[11]=0xc2;
+            buffer[29]=0x87;
+            int checksum=0;
+            int number=0;
+            for (int i=14;i<34;i++)
             {
-                // MAC
-                buffer[0]=0xe0;
-                buffer[1]=0x1a;
-                buffer[2]=0xea;
-                buffer[3]=0x37;
-                buffer[4]=0x3b;
-                buffer[5]=0x6c;
-                buffer[6]=0xe0;
-                buffer[7]=0x1a;
-                buffer[8]=0xea;
-                buffer[9]=0x37;
-                buffer[10]=0x3b;
-                buffer[0]=0x62;
-                // IP
-                buffer[29]=0x02;
-                buffer[33]=0x01;
-
-                write(sockets.find(addresses.find(buffer[FRAME_BYTE])->second)->second,&buffer,data_size);
-                //write(sockets.find("enp1s0f1")->second,&buffer,data_size);
-                //packets_map[(addresses.find(buffer[FRAME_BYTE])->second)].push_back(buffer);
-                //deal_with_old_frames(packets_map,sockets,NUMBER_OF_OLD_FRAMES);
+                int number=0;
+                if(i!=24 && i!=25)
+                {
+                    if(i%2==0)
+                    {
+                        number=int(buffer[i])<<8;
+                    }
+                    else
+                    {
+                        number+=int(buffer[i]);
+                    }
+                    checksum+=number;
+                    number=0;
+                }
             }
-
+            int carrier=checksum>>16;
+            int tmp=checksum & 0xffff;
+            int tmp2=tmp+carrier;
+            tmp2=(~tmp2) & 0xffff;
+            buffer[24]=(tmp2>>8) & 0xff;
+            buffer[25]=tmp2 & 0xff;
+            write(sockets.find("eno1")->second,&buffer,data_size);
         }
     }
 }
 
 int main()
 {
-    int main_socket=create_socket(VIRTUAL_INTERFACE);
+    int main_socket=create_socket("enp1s0f1");
     std::map<std::string,int> sockets;
     //sockets[VIRTUAL_INTERFACE]=create_socket(VIRTUAL_INTERFACE);
-    sockets["enp1s0f1"]=create_socket("enp1s0f1");
+    //sockets["enp1s0f1"]=create_socket("enp1s0f1");
+    sockets["eno1"]=create_socket("eno1");
     //sockets["enp2s0f2"]=create_socket("enp2s0f2");
 
     std::map<int,std::string> addresses;
+    //addresses[184]="enp2s0f2";
     //addresses[182]="enp2s0f0";
     //addresses[183]="enp2s0f1";
     addresses[1]="enp1s0f1";
